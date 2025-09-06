@@ -22,8 +22,11 @@ A FastAPI-based task management backend with JWT auth, Postgres, and Alembic mig
 - Docker Desktop (Windows/macOS) or Docker Engine (Linux)
 - PowerShell (Windows) or Bash (Linux/macOS)
 
-### 1) Configure environment
-Copy `.env.example` to `.env` (setup scripts do this automatically) and adjust values if needed.
+### 1) Clone the project
+```bash
+git clone https://github.com/vsreenaath/backend-engineer.git
+cd backend-engineer
+```
 
 ### 2) Run the setup
 
@@ -34,12 +37,14 @@ powershell -ExecutionPolicy Bypass -File setup-windows.ps1
 
 Linux:
 ```bash
-bash ./setup-linux.sh
+chmod +x setup-linux.sh
+./setup-linux.sh
 ```
 
 macOS:
 ```bash
-bash ./setup-macos.sh
+chmod +x setup-macos.sh
+./setup-macos.sh
 ```
 
 This will:
