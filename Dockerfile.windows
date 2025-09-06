@@ -1,0 +1,49 @@
+# Use Python 3.9-slim base image (matches your project requirement)
+FROM python:3.9-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=120 \
+    APP_HOME=/app
+
+# Set working directory
+WORKDIR $APP_HOME
+
+# Install system dependencies in one layer -> smaller image
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+ && rm -rf /var/lib/apt/lists/* \
+ && apt-get clean
+
+# Upgrade pip + tools
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Copy requirements first (for Docker layer caching)
+COPY requirements.txt .
+
+# Install Python dependencies (with extra reliability flags)
+RUN pip install --no-cache-dir \
+    --default-timeout=120 \
+    --trusted-host pypi.org \
+    --trusted-host pypi.python.org \
+    --trusted-host files.pythonhosted.org \
+    -r requirements.txt
+
+# Copy project files
+COPY . .
+
+# Optional cleanup (reduce image size by removing junk)
+RUN find . -type f -name "*.pyc" -delete && \
+    find . -type d -name "__pycache__" -delete || true
+
+# Expose FastAPI default port
+EXPOSE 8000
+
+# Run the FastAPI app with Uvicorn
+ENV PYTHONPATH="${APP_HOME}/problems/problem_1"
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
