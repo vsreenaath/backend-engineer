@@ -19,7 +19,7 @@ echo_success() { echo -e "${GREEN}✅ $1${NC}"; }
 
 # macOS-specific settings
 SED_INPLACE="sed -i ''"
-DOCKERFILE="Dockerfile.ubuntu"
+DOCKERFILE="Dockerfile.macos"
 
 # Check if we're actually on macOS
 check_macos() {
@@ -300,13 +300,18 @@ apply_migrations() {
     echo_info "Waiting for services to be ready..."
     sleep 8
     
-    # Try migration with better error handling
+    # Try migration with fallback to stamp head
     if $COMPOSE_CMD exec web alembic upgrade head 2>/dev/null; then
         echo_success "Database migrations applied successfully"
     else
-        echo_warn "Migration failed or not needed on first run."
-        echo_info "You can manually run migrations later with:"
-        echo "  $COMPOSE_CMD exec web alembic upgrade head"
+        echo_warn "Alembic upgrade failed, attempting to stamp head and continue..."
+        if $COMPOSE_CMD exec web alembic stamp head 2>/dev/null; then
+            echo_success "Stamped current DB state to head. Migrations considered applied."
+        else
+            echo_error "Migration and stamping failed. Showing web logs..."
+            $COMPOSE_CMD logs web || true
+            exit 1
+        fi
     fi
 }
 

@@ -1,4 +1,3 @@
-# Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
 # Environment variables
@@ -9,13 +8,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DEFAULT_TIMEOUT=120 \
     APP_HOME=/app
 
-# Set work directory
 WORKDIR $APP_HOME
 
-# Install system dependencies
+# System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    python3-dev \
+    build-essential \
     libpq-dev \
     curl \
  && rm -rf /var/lib/apt/lists/* \
@@ -33,15 +30,14 @@ RUN pip install --no-cache-dir \
     --trusted-host files.pythonhosted.org \
     -r requirements.txt
 
-# Copy project
+# Copy project files
 COPY . .
-
 
 # Cleanup caches (optional)
 RUN find . -type f -name "*.pyc" -delete && \
     find . -type d -name "__pycache__" -delete || true
 
-# Expose the port the app runs on
+# Expose FastAPI default port
 EXPOSE 8000
 
 # Set Python path to the problem root and run app
