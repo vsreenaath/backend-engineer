@@ -90,3 +90,94 @@ Note: Seeded demo users in `alembic/versions/0002_seed_data.py` and `seeds/01_se
 
 ## License
 MIT (or your preferred license)
+
+---
+
+# Problem 2: Microservice Architecture (API v2)
+
+Design a microservice-style extension for an e-commerce system. This repo hosts a single FastAPI app acting as the API gateway while Problem 2 modules are isolated by domain and use Redis as a lightweight message queue. A background worker processes asynchronous events.
+
+## Features (v2)
+- User service: Reuses authentication and profiles from Problem 1.
+- Product service: Catalog and inventory with stock adjustments.
+- Order service: Create orders and items, reserve stock asynchronously, pay/cancel flows.
+- Inter-service communication: Redis-backed queue with a Python worker to process events.
+- Data consistency: Stock reservations occur atomically in the worker using row locks; compensation restores stock on cancel.
+
+## Services in Compose
+- `web`: FastAPI app (exposes `/api/v2/...` in addition to `/api/v1/...`).
+- `db`: Postgres.
+- `redis`: Redis for queueing.
+- `worker`: Python process that consumes events from Redis and updates DB (stock reservations and compensation).
+
+## Environment
+- `REDIS_URL=redis://redis:6379/0` (added to `.env.example`).
+
+## Endpoints (v2)
+All responses are JSON. Protected endpoints require `Authorization: Bearer <token>`.
+
+- Auth (wraps P1 logic)
+  - `POST /api/v2/auth/login/access-token` → `{ access_token, token_type }`
+  - `GET /api/v2/users/me` → current user
+
+- Products
+  - `POST /api/v2/products` (auth required)
+  - `GET /api/v2/products`
+  - `GET /api/v2/products/{id}`
+  - `PATCH /api/v2/products/{id}` (auth required)
+  - `DELETE /api/v2/products/{id}` (auth required)
+  - `PATCH /api/v2/products/{id}/stock?delta=+N|-N` (auth required)
+
+- Orders
+  - `POST /api/v2/orders` (auth required) → Creates order with items, status `PENDING`, publishes `reserve_stock` event.
+  - `GET /api/v2/orders` (auth required)
+  - `GET /api/v2/orders/{id}` (auth required)
+  - `POST /api/v2/orders/{id}/pay` (auth required) → Allowed when `RESERVED`/`CONFIRMED`.
+  - `POST /api/v2/orders/{id}/cancel` (auth required) → Publishes compensation event; sets `CANCELLED` (if not finalized).
+
+## Sample curl commands
+Assuming `TOKEN` holds a valid bearer token.
+
+```bash
+# 1) Login (reuses P1 users and hashing)
+curl -s -X POST http://localhost:8000/api/v2/auth/login/access-token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'username=admin@example.com&password=<your-password>'
+
+# 2) Create a product
+curl -s -X POST http://localhost:8000/api/v2/products \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"sku":"SKU-1001","name":"T-Shirt","price_cents":1999,"stock":10}'
+
+# 3) List products
+curl -s http://localhost:8000/api/v2/products | jq .
+
+# 4) Create an order with 2 units of product 1
+curl -s -X POST http://localhost:8000/api/v2/orders \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"items":[{"product_id":1,"quantity":2}]}'
+
+# 5) Check order status (worker may take a moment to process)
+curl -s http://localhost:8000/api/v2/orders/1 -H "Authorization: Bearer $TOKEN" | jq .
+
+# 6) Pay order
+curl -s -X POST http://localhost:8000/api/v2/orders/1/pay -H "Authorization: Bearer $TOKEN" | jq .
+
+# 7) Cancel order (tests compensation path)
+curl -s -X POST http://localhost:8000/api/v2/orders/1/cancel -H "Authorization: Bearer $TOKEN" | jq .
+```
+
+## Implementation Notes
+- Models (P2): `problems/problem_2/app/models/` → `Product`, `Order`, `OrderItem`, `OrderStatus`.
+- CRUD (P2): `problems/problem_2/app/crud/` → product and order helpers.
+- Schemas (P2): `problems/problem_2/app/schemas/`.
+- API (P2): `problems/problem_2/app/api/v2/endpoints/` → `products.py`, `orders.py`, `auth.py`.
+- Messaging (P2): `problems/problem_2/app/core/messaging.py` uses Redis lists as a queue.
+- Worker: `problems/problem_2/worker.py` consumes `queue:reserve_stock` and `queue:cancel_order`.
+- Main app mounts v2 router in `problems/problem_1/app/main.py`.
+- Alembic imports P2 models in `alembic/env.py`; migration `0003_problem2_models.py` adds P2 tables.
+
+## Notes on Data Consistency
+- Orders start `PENDING`; worker reserves stock atomically (row locks) and moves to `RESERVED` or `FAILED`.
+- Cancel path compensates by incrementing stock when appropriate.
+- Payment endpoint validates allowed transitions.

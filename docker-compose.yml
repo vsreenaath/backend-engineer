@@ -1,4 +1,4 @@
-services:
+﻿services:
   db:
     image: postgres:14-alpine
     container_name: backend-engineer-db
@@ -31,11 +31,58 @@ services:
       - ALGORITHM=${ALGORITHM}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
       - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+      - REDIS_URL=${REDIS_URL}
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
+
+  web_v2:
+    build:
+      context: .
+      dockerfile: Dockerfile.windows
+    container_name: backend-engineer-web-v2
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - APP_VERSION=${APP_VERSION}
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+      - REDIS_URL=${REDIS_URL}
+    command: ["uvicorn", "problems.problem_2.app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    ports:
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.windows
+    container_name: backend-engineer-worker
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: ["python", "problems/problem_2/worker.py"]
+
+  redis:
+    image: redis:7-alpine
+    container_name: backend-engineer-redis
+    ports:
+      - "6379:6379"
 
   pgadmin:
     image: dpage/pgadmin4
@@ -50,6 +97,10 @@ services:
 
 volumes:
   postgres_data:
+
+
+
+
 
 
 

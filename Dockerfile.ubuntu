@@ -44,6 +44,6 @@ RUN find . -type f -name "*.pyc" -delete && \
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Set Python path to the problem root and run app
-ENV PYTHONPATH="${APP_HOME}/problems/problem_1"
+# Set Python path to include repo root and Problem 1 so both P1 and P2 are importable
+ENV PYTHONPATH="${APP_HOME}:${APP_HOME}/problems/problem_1"
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -8,14 +8,19 @@ from alembic import context
 # Add the application path to sys.path to allow importing app modules when running inside the container
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, '..'))
-APP_PATH = os.path.join(PROJECT_ROOT, 'problems', 'problem_1')
-if APP_PATH not in sys.path:
-    sys.path.insert(0, APP_PATH)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+APP_PATH_P1 = os.path.join(PROJECT_ROOT, 'problems', 'problem_1')
+APP_PATH_P2 = os.path.join(PROJECT_ROOT, 'problems', 'problem_2')
+for p in [APP_PATH_P1, APP_PATH_P2]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 # Import app settings and metadata
-from app.core.config import settings  # noqa: E402
-from app.core.database import Base  # noqa: E402
-from app import models  # noqa: F401, E402 - ensure models are imported and registered
+from problems.problem_1.app.core.config import settings  # noqa: E402
+from problems.problem_1.app.core.database import Base  # noqa: E402
+from problems.problem_1.app import models as p1_models  # noqa: F401, E402 - ensure P1 models are imported and registered
+from problems.problem_2.app import models as p2_models  # noqa: F401, E402 - ensure P2 models are imported
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

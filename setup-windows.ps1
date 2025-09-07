@@ -105,7 +105,14 @@ function Start-Containers {
         exit 1
     }
 
-    Write-Success "Containers started and web service is running"
+    # Verify the web_v2 container is running
+    $statusV2 = docker compose ps web_v2 --format json | ConvertFrom-Json
+    if (!$statusV2 -or $statusV2.State -ne "running") {
+        Write-Warning "web_v2 container (Problem 2) is not running yet. Showing recent logs:"
+        docker compose logs --tail=50 web_v2
+    }
+
+    Write-Success "Containers started and services are running"
 }
 
 function Invoke-Migrations {
@@ -142,8 +149,10 @@ function Show-CompletionInfo {
     Write-Success "Setup complete!"
     Write-Host ""
     Write-Host "[READY] Your app is running:" -ForegroundColor Green
-    Write-Host "   FastAPI: http://localhost:8000"
-    Write-Host "   API Docs: http://localhost:8000/docs"
+    Write-Host "   Problem 1 (Task Management): http://localhost:8000"
+    Write-Host "   P1 Docs: http://localhost:8000/docs"
+    Write-Host "   Problem 2 (E-commerce): http://localhost:8001"
+    Write-Host "   P2 Docs: http://localhost:8001/docs"
     Write-Host "   PgAdmin: http://localhost:5050"
     Write-Host ""
     Write-Host "[COMMANDS] Useful commands:" -ForegroundColor Green

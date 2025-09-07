@@ -45,5 +45,6 @@ RUN find . -type f -name "*.pyc" -delete && \
 EXPOSE 8000
 
 # Run the FastAPI app with Uvicorn
-ENV PYTHONPATH="${APP_HOME}/problems/problem_1"
+# Include repo root and Problem 1 path so both P1 and P2 modules are importable
+ENV PYTHONPATH="${APP_HOME}:${APP_HOME}/problems/problem_1"
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

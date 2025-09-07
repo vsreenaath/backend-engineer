@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = []
+    
+    # Messaging / Caching
+    REDIS_URL: str = "redis://redis:6379/0"
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v):
