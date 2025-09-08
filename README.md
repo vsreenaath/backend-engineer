@@ -206,7 +206,3 @@ python tests/summarize_logs.py
 - Apply migrations: `docker compose exec web alembic upgrade head`
 
 ---
-
-# License
-
-MIT (or your preferred license)
