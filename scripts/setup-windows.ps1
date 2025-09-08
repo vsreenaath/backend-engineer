@@ -1,5 +1,5 @@
 # =========================
-# Windows PowerShell Setup Script (Final Version - with explicit container checks)
+# Windows PowerShell Setup Script (Scripts Version)
 # =========================
 
 param(
@@ -59,22 +59,16 @@ function Set-EnvironmentFile {
 }
 
 function Update-DockerCompose {
-    Write-Info "Ensuring docker-compose.yml uses Dockerfile.windows for web..."
+    Write-Info "Ensuring docker-compose.yml uses docker/Dockerfile.windows for web..."
 
-    $dockerComposePath = ".\docker-compose.yml"
+    $dockerComposePath = "./docker-compose.yml"
     $content = Get-Content $dockerComposePath -Raw
 
-    # Adjust build section
-    if ($content -match "(?ms)(web:\s*.*?\n\s*build:\s*\.)") {
-        $content = $content -replace "(?ms)(web:\s*.*?\n\s*)build:\s*\.", "`${1}build:`n      context: .`n      dockerfile: Dockerfile.windows"
-    }
-    elseif ($content -match "(?ms)(web:\s*.*?dockerfile:\s*).*$") {
-        # Only replace the value on the dockerfile line, do not truncate the rest of the file
-        $content = $content -replace "(?ms)(web:\s*.*?dockerfile:\s*)([^\r\n]*)", "`${1}Dockerfile.windows"
-    }
+    # Replace dockerfile paths for services that specify a dockerfile
+    $content = $content -replace "(dockerfile:\s*)(?:Dockerfile\\.windows|Dockerfile\\.ubuntu|Dockerfile\\.macos)", "`${1}docker/Dockerfile.windows"
 
     $content | Set-Content $dockerComposePath -Encoding UTF8
-    Write-Success "docker-compose.yml updated correctly"
+    Write-Success "docker-compose.yml updated correctly to use docker/Dockerfile.windows"
 }
 
 function Test-Docker {
@@ -105,14 +99,17 @@ function Start-Containers {
         exit 1
     }
 
-    # Verify the web_v2 container is running
-    $statusV2 = docker compose ps web_v2 --format json | ConvertFrom-Json
-    if (!$statusV2 -or $statusV2.State -ne "running") {
-        Write-Warning "web_v2 container (Problem 2) is not running yet. Showing recent logs:"
-        docker compose logs --tail=50 web_v2
+    # Verify other containers
+    foreach ($svc in @("web_v2","web_v3","worker")) {
+        $s = docker compose ps $svc --format json | ConvertFrom-Json
+        if (!$s -or $s.State -ne "running") {
+            Write-Warning "$svc container is not running yet. Showing recent logs:"
+            docker compose logs --tail=100 $svc
+        }
     }
 
     Write-Success "Containers started and services are running"
+    Show-ContainerStatus
 }
 
 function Invoke-Migrations {
@@ -120,7 +117,6 @@ function Invoke-Migrations {
     Write-Info "Waiting for database..."
     Start-Sleep -Seconds 5
 
-    # Check again that web is still live
     $status = docker compose ps web --format json | ConvertFrom-Json
     if (!$status -or $status.State -ne "running") {
         Write-Error "Web container is not running. Cannot run migrations."
@@ -139,9 +135,13 @@ function Invoke-Migrations {
         } else {
             Write-Error "Migration and stamping failed. Showing web logs..."
             docker compose logs web
+            Write-Info "Showing worker logs (if any) to help diagnose:"
+            docker compose logs --tail=100 worker
             exit 1
         }
     }
+
+    Show-ContainerStatus
 }
 
 function Show-CompletionInfo {
@@ -153,6 +153,8 @@ function Show-CompletionInfo {
     Write-Host "   P1 Docs: http://localhost:8000/docs"
     Write-Host "   Problem 2 (E-commerce): http://localhost:8001"
     Write-Host "   P2 Docs: http://localhost:8001/docs"
+    Write-Host "   Problem 3 (Performance): http://localhost:8002"
+    Write-Host "   P3 Docs: http://localhost:8002/docs"
     Write-Host "   PgAdmin: http://localhost:5050"
     Write-Host ""
     Write-Host "[COMMANDS] Useful commands:" -ForegroundColor Green
@@ -161,17 +163,26 @@ function Show-CompletionInfo {
     Write-Host "   Restart: docker compose restart"
 }
 
-function Invoke-Cleanup {
-    Write-Error "Setup failed. Cleaning up..."
-    try { docker compose down 2>$null } catch {}
+function Show-ContainerStatus {
+    Write-Host ""; Write-Info "Container status summary:"
+    try {
+        $ps = docker compose ps --format json | ConvertFrom-Json
+        if ($ps) {
+            foreach ($c in $ps) {
+                $ports = $c.Ports -join ", "
+                Write-Host (" - {0} [{1}]  State={2}  Status={3}  Ports={4}" -f $c.Name, $c.Service, $c.State, $c.Status, $ports)
+            }
+        } else {
+            docker compose ps
+        }
+    } catch {
+        docker compose ps
+    }
 }
 
-# =============================
-# Main
-# =============================
 try {
     Write-Host "===========================" -ForegroundColor Cyan
-    Write-Host "[SETUP] Docker FastAPI Setup" -ForegroundColor Cyan
+    Write-Host "[SETUP] Docker FastAPI Setup (scripts/setup-windows.ps1)" -ForegroundColor Cyan
     Write-Host "===========================" -ForegroundColor Cyan
     $pythonCmd = Test-Prerequisites
     Set-EnvironmentFile -PythonCommand $pythonCmd
@@ -181,7 +192,6 @@ try {
     Invoke-Migrations
     Show-CompletionInfo
 } catch {
-    Invoke-Cleanup
     Write-Error "Setup failed with error: $_"
     exit 1
 }

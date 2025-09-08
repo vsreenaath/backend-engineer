@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.core.config import settings
 from app.api import api_router
@@ -24,6 +25,9 @@ if settings.BACKEND_CORS_ORIGINS:
 
 # Include API router (Problem 1 only)
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Metrics
+Instrumentator().instrument(app).expose(app)
 
 # Health check endpoint
 @app.get("/health", tags=["health"])

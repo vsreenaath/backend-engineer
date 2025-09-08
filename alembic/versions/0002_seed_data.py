@@ -56,6 +56,11 @@ def upgrade() -> None:
         )
     )
 
+    # Align sequences to MAX(id) to prevent duplicate key errors after explicit inserts
+    op.execute(sa.text("SELECT setval(pg_get_serial_sequence('users','id'), COALESCE((SELECT MAX(id) FROM users), 1));"))
+    op.execute(sa.text("SELECT setval(pg_get_serial_sequence('projects','id'), COALESCE((SELECT MAX(id) FROM projects), 1));"))
+    op.execute(sa.text("SELECT setval(pg_get_serial_sequence('tasks','id'), COALESCE((SELECT MAX(id) FROM tasks), 1));"))
+
 
 def downgrade() -> None:
     op.execute(sa.text("DELETE FROM tasks WHERE id IN (1,2,3)"))

@@ -3,8 +3,8 @@ import json
 import os
 import redis
 
-# Reuse settings from Problem 1
-from app.core.config import settings
+# Reuse settings from Problem 1 (use fully-qualified import to avoid PATH issues)
+from problems.problem_1.app.core.config import settings
 
 _redis_client = None
 

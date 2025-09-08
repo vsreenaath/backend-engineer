@@ -1,3 +1,4 @@
+# Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
 # Environment variables
@@ -8,11 +9,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DEFAULT_TIMEOUT=120 \
     APP_HOME=/app
 
+# Set work directory
 WORKDIR $APP_HOME
 
-# System dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+    gcc \
+    python3-dev \
     libpq-dev \
     curl \
  && rm -rf /var/lib/apt/lists/* \
@@ -30,16 +33,16 @@ RUN pip install --no-cache-dir \
     --trusted-host files.pythonhosted.org \
     -r requirements.txt
 
-# Copy project files
+# Copy project
 COPY . .
 
 # Cleanup caches (optional)
 RUN find . -type f -name "*.pyc" -delete && \
     find . -type d -name "__pycache__" -delete || true
 
-# Expose FastAPI default port
+# Expose the port the app runs on
 EXPOSE 8000
 
-# Set Python path to the problem root and run app
-ENV PYTHONPATH="${APP_HOME}/problems/problem_1"
+# Set Python path to include repo root and Problem 1 so both P1 and P2 are importable
+ENV PYTHONPATH="${APP_HOME}:${APP_HOME}/problems/problem_1"
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

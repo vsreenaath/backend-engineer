@@ -23,7 +23,7 @@ class UserUpdate(UserBase):
 # Properties shared by models stored in DB
 class UserInDBBase(UserBase):
     id: int
-    email: EmailStr
+    email: str
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None

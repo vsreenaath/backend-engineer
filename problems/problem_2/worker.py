@@ -3,6 +3,7 @@ import time
 from sqlalchemy.orm import Session
 
 from problems.problem_1.app.core.database import SessionLocal
+from problems.problem_1.app.models.user import User  # noqa: F401 ensure users table registered
 from problems.problem_2.app.core.messaging import get_redis_client
 from problems.problem_2.app.models.order import OrderStatus
 from problems.problem_2.app.models.product import Product

@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'problem1'
+    static_configs:
+      - targets: ['web:8000']
+  - job_name: 'problem2'
+    static_configs:
+      - targets: ['web_v2:8001']
+  - job_name: 'problem3'
+    static_configs:
+      - targets: ['web_v3:8002']

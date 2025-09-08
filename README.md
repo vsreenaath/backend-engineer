@@ -1,183 +1,212 @@
-# Task Management API (Problem 1)
+# Backend Engineer Assessment
 
-A FastAPI-based task management backend with JWT auth, Postgres, and Alembic migrations. Docker Compose spins up the full stack, including pgAdmin.
+Quick links:
 
-## Features
-- Users, Projects, Tasks with role checks
-- JWT authentication (password hashing via bcrypt)
-- SQLAlchemy 2.x models with Alembic migrations
-- Dockerized for Windows/Linux/macOS
-- pgAdmin for DB visibility
+- See `docs/SETUP.md` for local setup instructions
+- See `docs/TESTING.md` for how to run tests for Problems 1, 2, and 3
+- See `docs/doc.md` for architecture and flow details
+- See `docs/role.md` to know the use of each file and folder
 
-## Tech Stack
-- FastAPI, Uvicorn
-- SQLAlchemy 2.x, Alembic
-- Pydantic v1
-- Postgres, pgAdmin
-- Docker Compose
+This repository implements three problems as independent services running in Docker Compose:
 
-## Getting Started
+- Problem 1 (Task Management) on port 8000
+- Problem 2 (E-commerce v2) on port 8001
+- Problem 3 (Performance Optimization) on port 8002
 
-### Prerequisites
+pgAdmin is available on port 5050.
+
+## Prerequisites
+
 - Docker Desktop (Windows/macOS) or Docker Engine (Linux)
 - PowerShell (Windows) or Bash (Linux/macOS)
 
-### 1) Clone the project
+## Setup (common for all problems)
+
+1) Clone the repository
+
 ```bash
 git clone https://github.com/vsreenaath/backend-engineer.git
 cd backend-engineer
 ```
 
-### 2) Run the setup
+2) Start Docker Desktop
 
-Windows:
+3) Run the setup script (builds images, starts containers, applies migrations)
+
+- Windows
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File setup-windows.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-windows.ps1
 ```
 
-Linux:
+- Linux
+
 ```bash
-chmod +x setup-linux.sh
-./setup-linux.sh
+chmod +x ./scripts/setup-linux.sh
+./scripts/setup-linux.sh
 ```
 
-macOS:
+- macOS
+
 ```bash
-chmod +x setup-macos.sh
-./setup-macos.sh
+chmod +x ./scripts/setup-macos.sh
+./scripts/setup-macos.sh
 ```
 
-This will:
-- Copy `.env` and generate a fresh `SECRET_KEY`
-- Build and start containers
-- Apply Alembic migrations (or stamp the DB to head if already initialized)
+4) Verify services
 
-### 3) Access the services
-- API: http://localhost:8000
-- Docs: http://localhost:8000/docs
-- pgAdmin: http://localhost:5050 (default: `admin@admin.com` / `admin`)
+- Problem 1: http://localhost:8000 and http://localhost:8000/docs
+- Problem 2: http://localhost:8001 and http://localhost:8001/docs
+- Problem 3: http://localhost:8002 and http://localhost:8002/docs
+- pgAdmin: http://localhost:5050 (default: admin@admin.com / admin)
 
-## Authentication
-1) Create a user via the API (this hashes the password):
-   - `POST /api/v1/users` as a superuser, or adjust the seed to hash passwords.
-2) Obtain a token:
-   - `POST /api/v1/auth/login/access-token` with form fields `username` (email) and `password`.
-3) Use `Authorization: Bearer <access_token>` for protected endpoints.
+## Services in Docker Compose
 
-Note: Seeded demo users in `alembic/versions/0002_seed_data.py` and `seeds/01_seed.sql` use plain text `hashed_password` for demonstration only; they are not usable for login unless you change to hashed values or create new users via API.
-
-## Project Layout
-- `problems/problem_1/app/main.py` – FastAPI app factory and routing
-- `problems/problem_1/app/api/` – API routers and dependencies
-- `problems/problem_1/app/core/` – Settings, DB base, security (JWT, hashing)
-- `problems/problem_1/app/models/` – SQLAlchemy models
-- `problems/problem_1/app/crud/` – DB CRUD operations
-- `problems/problem_1/app/schemas/` – Pydantic schemas
-- `alembic/` – Migrations (run inside the web container)
-- `seeds/` – First-run SQL seeding for Postgres
-
-## Docker Cheat Sheet
-- Start: `docker compose up -d --build`
-- Logs: `docker compose logs -f`
-- Stop: `docker compose down`
-- Exec shell in web: `docker compose exec web bash`
-- Apply migrations: `docker compose exec web alembic upgrade head`
-
-## Troubleshooting
-- If migrations fail due to existing tables, the setup scripts will stamp head and continue.
-- If port conflicts occur, change `8000` (FastAPI) or `5432` (Postgres) in `docker-compose.yml`.
-- Ensure Docker Desktop is running on Windows/macOS.
-
-## License
-MIT (or your preferred license)
+- `web` (Problem 1)
+- `web_v2` (Problem 2)
+- `web_v3` (Problem 3)
+- `db` (Postgres)
+- `redis` (Redis)
+- `worker` (Background worker for Problem 2)
+- `pgadmin`
 
 ---
 
-# Problem 2: Microservice Architecture (API v2)
+# Problem 1: RESTful API Development (Task Management)
 
-Design a microservice-style extension for an e-commerce system. This repo hosts a single FastAPI app acting as the API gateway while Problem 2 modules are isolated by domain and use Redis as a lightweight message queue. A background worker processes asynchronous events.
+FastAPI app exposing `/api/v1` with JWT auth, projects and tasks.
 
-## Features (v2)
-- User service: Reuses authentication and profiles from Problem 1.
-- Product service: Catalog and inventory with stock adjustments.
-- Order service: Create orders and items, reserve stock asynchronously, pay/cancel flows.
-- Inter-service communication: Redis-backed queue with a Python worker to process events.
-- Data consistency: Stock reservations occur atomically in the worker using row locks; compensation restores stock on cancel.
+### Authentication
 
-## Services in Compose
-- `web`: FastAPI app (exposes `/api/v2/...` in addition to `/api/v1/...`).
-- `db`: Postgres.
-- `redis`: Redis for queueing.
-- `worker`: Python process that consumes events from Redis and updates DB (stock reservations and compensation).
-
-## Environment
-- `REDIS_URL=redis://redis:6379/0` (added to `.env.example`).
-
-## Endpoints (v2)
-All responses are JSON. Protected endpoints require `Authorization: Bearer <token>`.
-
-- Auth (wraps P1 logic)
-  - `POST /api/v2/auth/login/access-token` → `{ access_token, token_type }`
-  - `GET /api/v2/users/me` → current user
-
-- Products
-  - `POST /api/v2/products` (auth required)
-  - `GET /api/v2/products`
-  - `GET /api/v2/products/{id}`
-  - `PATCH /api/v2/products/{id}` (auth required)
-  - `DELETE /api/v2/products/{id}` (auth required)
-  - `PATCH /api/v2/products/{id}/stock?delta=+N|-N` (auth required)
-
-- Orders
-  - `POST /api/v2/orders` (auth required) → Creates order with items, status `PENDING`, publishes `reserve_stock` event.
-  - `GET /api/v2/orders` (auth required)
-  - `GET /api/v2/orders/{id}` (auth required)
-  - `POST /api/v2/orders/{id}/pay` (auth required) → Allowed when `RESERVED`/`CONFIRMED`.
-  - `POST /api/v2/orders/{id}/cancel` (auth required) → Publishes compensation event; sets `CANCELLED` (if not finalized).
-
-## Sample curl commands
-Assuming `TOKEN` holds a valid bearer token.
+- Login: `POST /api/v1/auth/login/access-token`
 
 ```bash
-# 1) Login (reuses P1 users and hashing)
-curl -s -X POST http://localhost:8000/api/v2/auth/login/access-token \
+curl -s -X POST http://localhost:8000/api/v1/auth/login/access-token \
   -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'username=admin@example.com&password=<your-password>'
-
-# 2) Create a product
-curl -s -X POST http://localhost:8000/api/v2/products \
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"sku":"SKU-1001","name":"T-Shirt","price_cents":1999,"stock":10}'
-
-# 3) List products
-curl -s http://localhost:8000/api/v2/products | jq .
-
-# 4) Create an order with 2 units of product 1
-curl -s -X POST http://localhost:8000/api/v2/orders \
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"items":[{"product_id":1,"quantity":2}]}'
-
-# 5) Check order status (worker may take a moment to process)
-curl -s http://localhost:8000/api/v2/orders/1 -H "Authorization: Bearer $TOKEN" | jq .
-
-# 6) Pay order
-curl -s -X POST http://localhost:8000/api/v2/orders/1/pay -H "Authorization: Bearer $TOKEN" | jq .
-
-# 7) Cancel order (tests compensation path)
-curl -s -X POST http://localhost:8000/api/v2/orders/1/cancel -H "Authorization: Bearer $TOKEN" | jq .
+  -d 'username=admin@example.com&password=<your-password>' | jq .
 ```
 
-## Implementation Notes
-- Models (P2): `problems/problem_2/app/models/` → `Product`, `Order`, `OrderItem`, `OrderStatus`.
-- CRUD (P2): `problems/problem_2/app/crud/` → product and order helpers.
-- Schemas (P2): `problems/problem_2/app/schemas/`.
-- API (P2): `problems/problem_2/app/api/v2/endpoints/` → `products.py`, `orders.py`, `auth.py`.
-- Messaging (P2): `problems/problem_2/app/core/messaging.py` uses Redis lists as a queue.
-- Worker: `problems/problem_2/worker.py` consumes `queue:reserve_stock` and `queue:cancel_order`.
-- Main app mounts v2 router in `problems/problem_1/app/main.py`.
-- Alembic imports P2 models in `alembic/env.py`; migration `0003_problem2_models.py` adds P2 tables.
+Use `Authorization: Bearer <access_token>` for protected endpoints.
 
-## Notes on Data Consistency
-- Orders start `PENDING`; worker reserves stock atomically (row locks) and moves to `RESERVED` or `FAILED`.
-- Cancel path compensates by incrementing stock when appropriate.
-- Payment endpoint validates allowed transitions.
+### Users (admin only for user management)
+
+- `GET /api/v1/users/me`
+- `GET /api/v1/users`
+- `POST /api/v1/users`
+- `PUT /api/v1/users/{user_id}`
+- `DELETE /api/v1/users/{user_id}`
+
+### Projects
+
+- `POST /api/v1/projects`
+- `GET /api/v1/projects`
+- `GET /api/v1/projects/{id}`
+- `PUT /api/v1/projects/{id}`
+- `DELETE /api/v1/projects/{id}`
+
+### Tasks
+
+- `POST /api/v1/tasks`
+- `GET /api/v1/tasks`
+- `GET /api/v1/tasks/{id}`
+- `PUT /api/v1/tasks/{id}`
+- `DELETE /api/v1/tasks/{id}`
+- `POST /api/v1/tasks/{id}/status/{status}`
+- `POST /api/v1/tasks/{id}/assign/{user_id}`
+
+---
+
+# Problem 2: Microservice Architecture (E-commerce v2)
+
+FastAPI app exposing `/api/v2` and a background `worker` processing reserve/cancel events via Redis.
+
+### Authentication
+
+You can log in via Problem 1 or Problem 2:
+
+- `POST /api/v1/auth/login/access-token` (P1)
+- `POST /api/v2/auth/login/access-token` (P2)
+
+### Products
+
+- `POST /api/v2/products`
+- `GET /api/v2/products`
+- `GET /api/v2/products/{id}`
+- `PATCH /api/v2/products/{id}`
+- `DELETE /api/v2/products/{id}`
+- `PATCH /api/v2/products/{id}/stock?delta=+N|-N`
+
+### Orders
+
+- `POST /api/v2/orders`
+- `GET /api/v2/orders`
+- `GET /api/v2/orders/{id}`
+- `POST /api/v2/orders/{id}/pay`
+- `POST /api/v2/orders/{id}/cancel`
+
+---
+
+# Problem 3: Performance Optimization (API p3)
+
+Independent FastAPI app (port 8002) with slow vs optimized analytics endpoints.
+
+### Endpoints (prefix `/api/p3`)
+
+- `POST /api/p3/analytics/seed?rows=50000&unique_paths=200`
+- `GET /api/p3/analytics/top-paths/slow?limit=10`
+- `GET /api/p3/analytics/top-paths/optimized?limit=10`
+
+### Quick start
+
+```bash
+curl -s -X POST "http://localhost:8002/api/p3/analytics/seed?rows=20000&unique_paths=150" | jq .
+curl -s "http://localhost:8002/api/p3/analytics/top-paths/slow?limit=10" | jq .
+curl -s "http://localhost:8002/api/p3/analytics/top-paths/optimized?limit=10" | jq .
+```
+
+---
+
+# Testing & Logs
+
+We provide independent endpoint tests for each problem that print results to console and write detailed logs to `tests/logs/`:
+
+- Problem 1: `problems/problem_1/tests/test_endpoints.py`
+- Problem 2: `problems/problem_2/tests/test_endpoints.py`
+- Problem 3: `problems/problem_3/tests/test_endpoints.py`
+
+Run individually:
+
+```bash
+pytest -q problems/problem_1/tests/test_endpoints.py -s
+pytest -q problems/problem_2/tests/test_endpoints.py -s
+pytest -q problems/problem_3/tests/test_endpoints.py -s
+```
+
+Log files are written to:
+
+- `tests/logs/problem-1-tests.log`
+- `tests/logs/problem-2-tests.log`
+- `tests/logs/problem-3-tests.log`
+
+Summarize results after running tests:
+
+```bash
+python tests/summarize_logs.py
+```
+
+---
+
+
+# Useful Commands
+
+- Start: `docker compose up -d --build`
+- Logs: `docker compose logs -f`
+- Stop: `docker compose down`
+- Exec into web: `docker compose exec web bash`
+- Apply migrations: `docker compose exec web alembic upgrade head`
+
+---
+
+# License
+
+MIT (or your preferred license)

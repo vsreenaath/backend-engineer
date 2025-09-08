@@ -1,6 +1,6 @@
 from typing import Any, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
@@ -145,7 +145,7 @@ def read_task(
     
     return task
 
-@router.delete("/{task_id}", response_model=schemas.Task)
+@router.delete("/{task_id}", status_code=status.HTTP_200_OK)
 def delete_task(
     *,
     db: Session = Depends(get_db),
@@ -176,8 +176,8 @@ def delete_task(
             status_code=400, detail="Not enough permissions to delete this task"
         )
     
-    task = crud.task.remove(db=db, id=task_id)
-    return task
+    crud.task.remove(db=db, id=task_id)
+    return {"status": "deleted"}
 
 @router.post("/{task_id}/status/{status}", response_model=schemas.Task)
 def update_task_status(

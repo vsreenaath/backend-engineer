@@ -12,3 +12,14 @@ pytest-asyncio==0.21.0
 httpx==0.24.1
 python-multipart==0.0.6
 redis==4.6.0
+
+# Problem 3 async / benchmarking deps
+asyncpg==0.28.0
+pytest-benchmark==4.0.0
+
+# Monitoring / Metrics
+prometheus-fastapi-instrumentator==6.1.0
+prometheus-client==0.17.1
+
+# Coverage
+pytest-cov==4.1.0

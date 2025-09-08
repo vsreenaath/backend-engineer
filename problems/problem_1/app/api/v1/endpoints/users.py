@@ -1,6 +1,7 @@
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
@@ -20,7 +21,17 @@ def read_users(
     Retrieve users.
     """
     users = crud.user.get_multi(db, skip=skip, limit=limit)
-    return users
+    # Defensive: filter out any rows with invalid emails to avoid pydantic EmailStr serialization errors
+    safe_users = []
+    for u in users:
+        try:
+            # Validate email format
+            _ = EmailStr.validate(u.email)
+            safe_users.append(u)
+        except Exception:
+            # Skip invalid row
+            continue
+    return safe_users
 
 @router.post("/", response_model=schemas.User)
 def create_user(

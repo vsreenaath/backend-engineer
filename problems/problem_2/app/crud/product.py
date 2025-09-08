@@ -2,6 +2,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from problems.problem_2.app.models.product import Product
+from problems.problem_2.app.models.order import OrderItem
 
 
 def get(db: Session, product_id: int) -> Optional[Product]:
@@ -35,6 +36,8 @@ def update(db: Session, product: Product, **fields) -> Product:
 
 
 def delete(db: Session, product: Product) -> None:
+    # Remove dependent order items first to satisfy FK constraints
+    db.query(OrderItem).filter(OrderItem.product_id == product.id).delete(synchronize_session=False)
     db.delete(product)
     db.commit()
 

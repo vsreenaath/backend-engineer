@@ -1,10 +1,11 @@
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 
 from sqlalchemy.orm import Session
 
 from app.crud.base import CRUDBase
 from app.models import Task, TaskStatus
 from app.schemas.task import TaskCreate, TaskUpdate
+from fastapi.encoders import jsonable_encoder
 
 
 class CRUDTask(CRUDBase[Task, TaskCreate, TaskUpdate]):
@@ -44,7 +45,8 @@ class CRUDTask(CRUDBase[Task, TaskCreate, TaskUpdate]):
     def update_status(
         self, db: Session, *, db_obj: Task, status: TaskStatus
     ) -> Task:
-        db_obj.status = status
+        # Persist enum value as canonical string
+        db_obj.status = status.value if hasattr(status, 'value') else str(status)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
@@ -54,6 +56,28 @@ class CRUDTask(CRUDBase[Task, TaskCreate, TaskUpdate]):
         self, db: Session, *, db_obj: Task, assignee_id: Optional[int] = None
     ) -> Task:
         db_obj.assignee_id = assignee_id
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def create(self, db: Session, *, obj_in: TaskCreate) -> Task:
+        data: Dict[str, Any] = jsonable_encoder(obj_in)
+        # Normalize status to match DB CHECK constraint
+        mapping = {
+            'TODO': 'ToDo',
+            'IN_PROGRESS': 'InProgress',
+            'DONE': 'Done',
+            'ToDo': 'ToDo',
+            'InProgress': 'InProgress',
+            'Done': 'Done',
+        }
+        status_val = data.get('status')
+        if hasattr(status_val, 'value'):
+            data['status'] = status_val.value
+        elif isinstance(status_val, str):
+            data['status'] = mapping.get(status_val, status_val)
+        db_obj = self.model(**data)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)

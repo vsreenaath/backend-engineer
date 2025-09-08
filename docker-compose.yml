@@ -20,7 +20,7 @@
   web:
     build:
       context: .
-      dockerfile: Dockerfile.windows
+      dockerfile: docker/Dockerfile.windows
     container_name: backend-engineer-web
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
@@ -41,7 +41,7 @@
   web_v2:
     build:
       context: .
-      dockerfile: Dockerfile.windows
+      dockerfile: docker/Dockerfile.windows
     container_name: backend-engineer-web-v2
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
@@ -61,10 +61,33 @@
       redis:
         condition: service_started
 
+  web_v3:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.windows
+    container_name: backend-engineer-web-v3
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - APP_VERSION=${APP_VERSION}
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+      - REDIS_URL=${REDIS_URL}
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002", "--app-dir", "problems/problem_3"]
+    ports:
+      - "8002:8002"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.windows
+      dockerfile: docker/Dockerfile.windows
     container_name: backend-engineer-worker
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
@@ -95,8 +118,55 @@
     depends_on:
       - db
 
+  gateway:
+    image: nginx:alpine
+    container_name: backend-engineer-gateway
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      - web
+      - web_v2
+      - web_v3
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: backend-engineer-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - web
+      - web_v2
+      - web_v3
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: backend-engineer-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   postgres_data:
+
+
+
+
+
+
+
+
+
+
 
 
 

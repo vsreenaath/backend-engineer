@@ -12,7 +12,8 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 APP_PATH_P1 = os.path.join(PROJECT_ROOT, 'problems', 'problem_1')
 APP_PATH_P2 = os.path.join(PROJECT_ROOT, 'problems', 'problem_2')
-for p in [APP_PATH_P1, APP_PATH_P2]:
+APP_PATH_P3 = os.path.join(PROJECT_ROOT, 'problems', 'problem_3')
+for p in [APP_PATH_P1, APP_PATH_P2, APP_PATH_P3]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -21,6 +22,8 @@ from problems.problem_1.app.core.config import settings  # noqa: E402
 from problems.problem_1.app.core.database import Base  # noqa: E402
 from problems.problem_1.app import models as p1_models  # noqa: F401, E402 - ensure P1 models are imported and registered
 from problems.problem_2.app import models as p2_models  # noqa: F401, E402 - ensure P2 models are imported
+
+from problems.problem_3.app.models import page_view as p3_models  # noqa: F401, E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
