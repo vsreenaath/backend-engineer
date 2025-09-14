@@ -87,6 +87,32 @@ def auth_headers(token: str) -> Dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def test_auth_signup_and_login_smoke() -> None:
+    c2 = httpx.Client(base_url=BASE_URL_P2, timeout=30.0)
+
+    # Unique email per run
+    email = f"p2_smoke_{int(time.time())}@example.com"
+    password = "Secret123!"
+
+    # Signup via P2
+    r = c2.post(f"{API_V2}/auth/signup", json={"email": email, "password": password, "full_name": "P2 Smoke"})
+    r.raise_for_status(); user = r.json(); assert user["email"] == email; log("PASS auth: signup (P2 smoke)")
+
+    # Login via P2
+    r = c2.post(
+        f"{API_V2}/auth/login/access-token",
+        data={"username": email, "password": password},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    r.raise_for_status(); token = r.json()["access_token"]; assert token; log("PASS auth: login (P2 smoke)")
+
+    # /users/me
+    r = c2.get(f"{API_V2}/users/me", headers=auth_headers(token))
+    r.raise_for_status(); me = r.json(); assert me["email"] == email; log("PASS users: me (P2 smoke)")
+
+    c2.close()
+
+
 def test_problem_2_products_and_orders() -> None:
     LOG_FILE.unlink(missing_ok=True)
     c1 = httpx.Client(base_url=BASE_URL_P1, timeout=30.0)

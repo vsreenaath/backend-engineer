@@ -56,6 +56,31 @@ def test_seed_and_endpoints() -> None:
     client.close()
 
 
+def test_auth_signup_and_login_p3() -> None:
+    client = httpx.Client(base_url=BASE_URL, timeout=30.0)
+
+    email = f"p3_smoke_{int(time.time())}@example.com"
+    password = "Secret123!"
+
+    # Signup via P3
+    r = client.post("/auth/signup", json={"email": email, "password": password, "full_name": "P3 Smoke"})
+    r.raise_for_status(); data = r.json(); assert data["email"] == email; log("PASS auth: signup (P3)")
+
+    # Login via P3
+    r = client.post(
+        "/auth/login/access-token",
+        data={"username": email, "password": password},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    r.raise_for_status(); token = r.json()["access_token"]; assert token; log("PASS auth: login (P3)")
+
+    # /auth/users/me
+    r = client.get("/auth/users/me", headers={"Authorization": f"Bearer {token}"})
+    r.raise_for_status(); me = r.json(); assert me["email"] == email; log("PASS users: me (P3)")
+
+    client.close()
+
+
 def test_summary() -> None:
     """Parse the log file and print a brief summary to console."""
     if not LOG_FILE.exists():

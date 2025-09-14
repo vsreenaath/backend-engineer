@@ -39,17 +39,17 @@ if ($Coverage) {
 }
 
 # Problem 1
-$args1 = @('-e', 'P1_BASE_URL=http://web:8000', '-e', 'POSTGRES_HOST=db', 'web', 'pytest', '-q', 'problems/problem_1/tests/test_endpoints.py', "-s$cov1")
+$args1 = @('-e', 'P1_BASE_URL=http://web:8000', '-e', 'POSTGRES_HOST=db', 'web', 'pytest', '-q', 'problems/problem_1/tests', "-s$cov1")
 $ok = Invoke-Pytest -Name "Problem 1" -ExecArgs $args1
 if (-not $ok) { $allOk = $false }
 
 # Problem 2 (depends on Problem 1 auth)
-$args2 = @('-e', 'P1_BASE_URL=http://web:8000', '-e', 'P2_BASE_URL=http://web_v2:8001', '-e', 'POSTGRES_HOST=db', 'web', 'pytest', '-q', 'problems/problem_2/tests/test_endpoints.py', "-s$cov2")
+$args2 = @('-e', 'P1_BASE_URL=http://web:8000', '-e', 'P2_BASE_URL=http://web_v2:8001', '-e', 'POSTGRES_HOST=db', 'web', 'pytest', '-q', 'problems/problem_2/tests', "-s$cov2")
 $ok = Invoke-Pytest -Name "Problem 2" -ExecArgs $args2
 if (-not $ok) { $allOk = $false }
 
-# Problem 3
-$args3 = @('-e', 'P3_API_BASE_URL=http://web_v3:8002/api/p3', 'web', 'pytest', '-q', 'problems/problem_3/tests/test_endpoints.py', "-s$cov3")
+# Problem 3 (run from web but via gateway proxy)
+$args3 = @('-e', 'P3_API_BASE_URL=http://gateway/p3/api/p3', 'web', 'pytest', '-q', 'problems/problem_3/tests', "-s$cov3")
 $ok = Invoke-Pytest -Name "Problem 3" -ExecArgs $args3
 if (-not $ok) { $allOk = $false }
 

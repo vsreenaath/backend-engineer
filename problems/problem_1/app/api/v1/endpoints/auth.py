@@ -49,3 +49,29 @@ def test_token(current_user: models.User = Depends(deps.get_current_user)) -> An
     Test access token
     """
     return current_user
+
+@router.post("/signup", response_model=schemas.User)
+def signup(
+    *,
+    db: Session = Depends(get_db),
+    user_in: schemas.UserCreate,
+) -> Any:
+    """
+    Public signup endpoint to create a standard user account.
+    Superuser creation is not allowed via this endpoint.
+    """
+    # Reject duplicate emails
+    if crud_user.get_by_email(db, email=user_in.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The user with this email already exists in the system.",
+        )
+    # Sanitize: always force non-superuser
+    safe_user = schemas.UserCreate(
+        email=user_in.email,
+        password=user_in.password,
+        full_name=user_in.full_name,
+        is_superuser=False,
+    )
+    user = crud_user.create(db, obj_in=safe_user)
+    return user

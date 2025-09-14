@@ -6,6 +6,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from .core.config import settings
 from .routes.analytics import router as analytics_router
+from .routes.auth import router as auth_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -26,6 +27,7 @@ if settings.BACKEND_CORS_ORIGINS:
 
 # Routers
 app.include_router(analytics_router, prefix="/api/p3")
+app.include_router(auth_router, prefix="/api/p3")
 
 
 @app.get("/health", tags=["health"])

@@ -49,7 +49,7 @@ P2=$?
 if [[ $P2 -ne 0 ]]; then echo "[FAIL] Problem 2 tests failed"; ALL_OK=0; else echo "[OK] Problem 2 passed"; fi
 
 echo "[INFO] Running Problem 3 tests..."
-docker compose exec -e P3_API_BASE_URL=http://web_v3:8002/api/p3 web \
+docker compose exec -e P3_API_BASE_URL=http://gateway/p3/api/p3 web \
   pytest -q problems/problem_3/tests/test_endpoints.py -s${COV3}
 P3=$?
 if [[ $P3 -ne 0 ]]; then echo "[FAIL] Problem 3 tests failed"; ALL_OK=0; else echo "[OK] Problem 3 passed"; fi

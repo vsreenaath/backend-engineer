@@ -110,6 +110,28 @@ def auth_headers(token: str) -> Dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def test_signup_and_login_flow() -> None:
+    client = httpx.Client(base_url=BASE_URL, timeout=30.0, follow_redirects=True)
+
+    email = f"p1signup_{int(time.time())}@example.com"
+    password = "Secret123!"
+    payload = {"email": email, "password": password, "full_name": "P1 Signup"}
+
+    # Signup
+    r = client.post(f"{API_PREFIX}/auth/signup", json=payload)
+    r.raise_for_status(); data = r.json(); assert data["email"] == email; log("PASS auth: signup (P1)")
+
+    # Login with the created user
+    token = get_token(client, email, password)
+    log("PASS auth: login with signed up user (P1)")
+
+    # Verify /users/me
+    r = client.get(f"{API_PREFIX}/users/me", headers=auth_headers(token))
+    r.raise_for_status(); me = r.json(); assert me["email"] == email; log("PASS users: me for signed up user (P1)")
+
+    client.close()
+
+
 def test_problem_1_flow() -> None:
     LOG_FILE.unlink(missing_ok=True)
     client = httpx.Client(base_url=BASE_URL, timeout=30.0, follow_redirects=True)
